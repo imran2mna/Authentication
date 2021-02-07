@@ -1,4 +1,4 @@
-package lk.lemono.comm;
+package lk.lemono.comm.request;
 
 /**
  * Created by imran on 2/6/21.

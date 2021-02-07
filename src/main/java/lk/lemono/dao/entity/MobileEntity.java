@@ -2,6 +2,7 @@ package lk.lemono.dao.entity;
 
 import javax.persistence.*;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 
 /**
@@ -21,7 +22,20 @@ public class MobileEntity {
     private String number;
 
     @Column(name = "no_attempts")
+    @NotNull
     private Integer noAttempts;
+
+    @Column(name = "device_id")
+    @NotNull
+    private String deviceID;
+
+    @Column(name = "session")
+    @NotNull
+    private String sessionID;
+
+    @Column(name = "otp")
+    @NotNull
+    private String otp;
 
     public Integer getId() {
         return id;
@@ -45,5 +59,29 @@ public class MobileEntity {
 
     public void setNoAttempts(Integer noAttempts) {
         this.noAttempts = noAttempts;
+    }
+
+    public String getDeviceID() {
+        return deviceID;
+    }
+
+    public void setDeviceID(String deviceID) {
+        this.deviceID = deviceID;
+    }
+
+    public String getSessionID() {
+        return sessionID;
+    }
+
+    public void setSessionID(String sessionID) {
+        this.sessionID = sessionID;
+    }
+
+    public String getOtp() {
+        return otp;
+    }
+
+    public void setOtp(String otp) {
+        this.otp = otp;
     }
 }

@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletResponse;
 import java.util.Random;
 
 /**
@@ -31,7 +33,8 @@ public class VerificationManager {
     private AuthorizedRepository authorizedRepository;
 
     @PostMapping("/enter")
-    public VerificationResponse mobileNumber(@RequestBody VerificationRequest request){
+    public VerificationResponse mobileNumber(@RequestBody VerificationRequest request,
+                                             HttpServletResponse servletResponse){
 
         if(request.getMobile() == null || request.getDeviceID() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
 
@@ -72,6 +75,7 @@ public class VerificationManager {
         VerificationResponse response = new VerificationResponse();
         response.setProcessed(StatCodes.SUCCESS);
         response.setSessionID(entity.getSessionID());
+        servletResponse.addCookie(new Cookie("tid", entity.getSessionID()));
         return response;
     }
 
@@ -104,7 +108,8 @@ public class VerificationManager {
 
 
     @PostMapping("/submit")
-    public VerificationResponse submitCode(@RequestBody VerificationRequest request){
+    public VerificationResponse submitCode(@RequestBody VerificationRequest request,
+                                           HttpServletResponse servletResponse){
 
         if(request.getSessionID() == null
                 || request.getDeviceID() == null
@@ -132,6 +137,7 @@ public class VerificationManager {
             // actually we need to log the login in separate table, also include date
             VerificationResponse response = new VerificationResponse();
             response.setSessionID(authEntity.getSessionID());
+            servletResponse.addCookie(new Cookie("sid", authEntity.getSessionID()));
             response.setProcessed(StatCodes.SUCCESS);
             return response;
         }

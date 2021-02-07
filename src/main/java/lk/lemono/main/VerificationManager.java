@@ -3,7 +3,9 @@ package lk.lemono.main;
 import lk.lemono.comm.common.StatCodes;
 import lk.lemono.comm.request.VerificationRequest;
 import lk.lemono.comm.response.VerificationResponse;
+import lk.lemono.dao.entity.AuthorityEntity;
 import lk.lemono.dao.entity.MobileEntity;
+import lk.lemono.dao.repository.AuthorizedRepository;
 import lk.lemono.dao.repository.VerificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -25,6 +27,8 @@ public class VerificationManager {
     @Autowired
     private VerificationRepository verificationRepository;
 
+    @Autowired
+    private AuthorizedRepository authorizedRepository;
 
     @PostMapping("/enter")
     public VerificationResponse mobileNumber(@RequestBody VerificationRequest request){
@@ -78,23 +82,23 @@ public class VerificationManager {
     public VerificationResponse resendCode(@RequestBody VerificationRequest request){
         if(request.getSessionID() == null || request.getDeviceID() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
 
-        MobileEntity entity = verificationRepository.findByDeviceIDAndSessionID(request.getDeviceID(), request.getSessionID());
-        if (entity == null) {
+        MobileEntity mobileEntity = verificationRepository.findByDeviceIDAndSessionID(request.getDeviceID(), request.getSessionID());
+        if (mobileEntity == null) {
             return new VerificationResponse(StatCodes.BLOCKED);
         }
 
-        if(entity.getResendAttempts() == StatCodes.RESEND_ATTEMPTS) { return new VerificationResponse(StatCodes.BLOCKED);}
-        entity.setResendAttempts(entity.getResendAttempts() + 1);
+        if(mobileEntity.getResendAttempts() == StatCodes.RESEND_ATTEMPTS) { return new VerificationResponse(StatCodes.BLOCKED);}
+        mobileEntity.setResendAttempts(mobileEntity.getResendAttempts() + 1);
 
         try {
-            verificationRepository.save(entity);
+            verificationRepository.save(mobileEntity);
         } catch (Exception e){
             e.printStackTrace();
             return new VerificationResponse(StatCodes.TECHNICAL);
         }
         VerificationResponse response = new VerificationResponse();
         response.setProcessed(StatCodes.SUCCESS);
-        response.setSessionID(entity.getSessionID());
+        response.setSessionID(mobileEntity.getSessionID());
         return response;
     }
 
@@ -111,18 +115,38 @@ public class VerificationManager {
             return new VerificationResponse(StatCodes.BLOCKED);
         }
 
+        // happy story
         if(request.getOtp().trim().equals(entity.getOtp().trim())) {
-            verificationRepository.delete(entity);
-            // generate new random string
+            AuthorityEntity authEntity = new AuthorityEntity();
+            authEntity.setNumber(entity.getNumber());
+            authEntity.setSessionID(randomKey(Config.SESSION_KEY_SIZE));
 
+            try {
+                authorizedRepository.save(authEntity);
+                verificationRepository.delete(entity);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return new VerificationResponse(StatCodes.TECHNICAL);
+            }
+
+            // actually we need to log the login in separate table, also include date
+            VerificationResponse response = new VerificationResponse();
+            response.setSessionID(authEntity.getSessionID());
+            response.setProcessed(StatCodes.SUCCESS);
+            return response;
         }
 
+        if(entity.getSubmitAttempts() == StatCodes.RESEND_ATTEMPTS) { return new VerificationResponse(StatCodes.BLOCKED);}
         entity.setSubmitAttempts(entity.getSubmitAttempts() + 1);
         verificationRepository.save(entity);
 
         return new VerificationResponse(StatCodes.BLOCKED);
     }
 
+
+    /*
+    Random string generation
+    */
 
     protected String randomKey(int length){
         //String elements = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*_=+-/.?<>)";

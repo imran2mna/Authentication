@@ -6,6 +6,10 @@ package lk.lemono.comm;
 public class VerificationResponse {
     private int processed;
 
+    public VerificationResponse(int processed) {
+        this.processed = processed;
+    }
+
     public int getProcessed() {
         return processed;
     }

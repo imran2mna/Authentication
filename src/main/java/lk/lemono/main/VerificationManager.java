@@ -19,13 +19,14 @@ import java.util.Random;
  */
 @Controller
 @ResponseBody
-@RequestMapping(value = "verify")
+@RequestMapping(value = "verification")
 public class VerificationManager {
 
     @Autowired
     private VerificationRepository verificationRepository;
 
-    @PostMapping("/mobile")
+
+    @PostMapping("/enter")
     public VerificationResponse mobileNumber(@RequestBody VerificationRequest request){
 
         if(request.getMobile() == null || request.getDeviceID() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
@@ -35,7 +36,9 @@ public class VerificationManager {
         if(entity == null) {
             entity = new MobileEntity();
             entity.setNumber(request.getMobile());
-            entity.setNoAttempts(1);
+            entity.setEnterAttempts(1);
+            entity.setResendAttempts(1);
+            entity.setSubmitAttempts(0);
             entity.setDeviceID(request.getDeviceID());
             entity.setSessionID(randomKey(Config.RANDOM_KEY_SIZE));
             entity.setOtp(randomOTP(Config.RANDOM_OTP_SIZE));
@@ -46,12 +49,12 @@ public class VerificationManager {
                 entity.setDeviceID(request.getDeviceID());
                 entity.setSessionID(randomKey(Config.RANDOM_KEY_SIZE));
                 entity.setOtp(randomOTP(Config.RANDOM_OTP_SIZE));
-                entity.setNoAttempts(0); // set to zero - below code will adjust
+                entity.setEnterAttempts(0); // set to zero - below code will adjust
             }
 
             // block the mobile number
-            if(entity.getNoAttempts() == StatCodes.ATTEMPTS) { return new VerificationResponse(StatCodes.BLOCKED);}
-            entity.setNoAttempts(entity.getNoAttempts() + 1);
+            if(entity.getEnterAttempts() == StatCodes.ATTEMPTS) { return new VerificationResponse(StatCodes.BLOCKED);}
+            entity.setEnterAttempts(entity.getEnterAttempts() + 1);
         }
 
         try {
@@ -68,17 +71,62 @@ public class VerificationManager {
         return response;
     }
 
+
+
+
     @PostMapping("/resend")
     public VerificationResponse resendCode(@RequestBody VerificationRequest request){
-        System.out.println(request.getMobile());
+        if(request.getSessionID() == null || request.getDeviceID() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
 
-        return new VerificationResponse(StatCodes.SUCCESS);
+        MobileEntity entity = verificationRepository.findByDeviceIDAndSessionID(request.getDeviceID(), request.getSessionID());
+        if (entity == null) {
+            return new VerificationResponse(StatCodes.BLOCKED);
+        }
+
+        if(entity.getResendAttempts() == StatCodes.RESEND_ATTEMPTS) { return new VerificationResponse(StatCodes.BLOCKED);}
+        entity.setResendAttempts(entity.getResendAttempts() + 1);
+
+        try {
+            verificationRepository.save(entity);
+        } catch (Exception e){
+            e.printStackTrace();
+            return new VerificationResponse(StatCodes.TECHNICAL);
+        }
+        VerificationResponse response = new VerificationResponse();
+        response.setProcessed(StatCodes.SUCCESS);
+        response.setSessionID(entity.getSessionID());
+        return response;
     }
 
 
+    @PostMapping("/submit")
+    public VerificationResponse submitCode(@RequestBody VerificationRequest request){
+
+        if(request.getSessionID() == null
+                || request.getDeviceID() == null
+                || request.getOtp() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
+
+        MobileEntity entity = verificationRepository.findByDeviceIDAndSessionID(request.getDeviceID(), request.getSessionID());
+        if (entity == null) {
+            return new VerificationResponse(StatCodes.BLOCKED);
+        }
+
+        if(request.getOtp().trim().equals(entity.getOtp().trim())) {
+            verificationRepository.delete(entity);
+            // generate new random string
+
+        }
+
+        entity.setSubmitAttempts(entity.getSubmitAttempts() + 1);
+        verificationRepository.save(entity);
+
+        return new VerificationResponse(StatCodes.BLOCKED);
+    }
+
 
     protected String randomKey(int length){
-        String elements = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*_=+-/.?<>)";
+        //String elements = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*_=+-/.?<>)";
+        String elements = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         char[] key = new char[length];
         Random random = new Random();
 

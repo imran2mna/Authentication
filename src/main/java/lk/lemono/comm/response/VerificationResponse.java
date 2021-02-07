@@ -1,8 +1,11 @@
 package lk.lemono.comm.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 /**
  * Created by imran on 2/6/21.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class VerificationResponse {
     private int processed;
     private String sessionID;

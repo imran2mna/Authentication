@@ -21,9 +21,17 @@ public class MobileEntity {
     @Pattern(regexp = "(\\+94|0)[0-9]{9}", message = "mobile number pattern issue")
     private String number;
 
-    @Column(name = "no_attempts")
+    @Column(name = "enter_attempts")
     @NotNull
-    private Integer noAttempts;
+    private Integer enterAttempts;
+
+    @Column(name = "resend_attempts")
+    @NotNull
+    private Integer resendAttempts;
+
+    @Column(name = "submit_attempts")
+    @NotNull
+    private Integer submitAttempts;
 
     @Column(name = "device_id")
     @NotNull
@@ -53,12 +61,28 @@ public class MobileEntity {
         this.number = number;
     }
 
-    public Integer getNoAttempts() {
-        return noAttempts;
+    public Integer getEnterAttempts() {
+        return enterAttempts;
     }
 
-    public void setNoAttempts(Integer noAttempts) {
-        this.noAttempts = noAttempts;
+    public void setEnterAttempts(Integer enterAttempts) {
+        this.enterAttempts = enterAttempts;
+    }
+
+    public Integer getResendAttempts() {
+        return resendAttempts;
+    }
+
+    public void setResendAttempts(Integer resendAttempts) {
+        this.resendAttempts = resendAttempts;
+    }
+
+    public Integer getSubmitAttempts() {
+        return submitAttempts;
+    }
+
+    public void setSubmitAttempts(Integer submitAttempts) {
+        this.submitAttempts = submitAttempts;
     }
 
     public String getDeviceID() {

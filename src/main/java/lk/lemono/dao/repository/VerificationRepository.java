@@ -9,4 +9,6 @@ import org.springframework.data.repository.CrudRepository;
 public interface VerificationRepository extends CrudRepository<MobileEntity, Integer> {
     MobileEntity findByNumberAndDeviceID(String number, String deviceID);
     MobileEntity findByNumber(String number);
+    MobileEntity findBySessionID(String sessionID);
+    MobileEntity findByDeviceIDAndSessionID(String deviceID, String sessionID);
 }

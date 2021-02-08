@@ -83,7 +83,7 @@ public class VerificationManager {
 
     @PostMapping("/resend")
     public VerificationResponse resendCode(@RequestBody VerificationRequest request,
-                                           @CookieValue(name = "tid") String tid){
+                                           @CookieValue(name = Cookies.TID) String tid){
         if(request.getDeviceID() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
 
         MobileEntity mobileEntity = verificationRepository.findByDeviceIDAndSessionID(request.getDeviceID(), tid);
@@ -109,7 +109,7 @@ public class VerificationManager {
     @PostMapping("/submit")
     public VerificationResponse submitCode(@RequestBody VerificationRequest request,
                                            HttpServletResponse servletResponse,
-                                           @CookieValue(name = "tid") String tid){
+                                           @CookieValue(name = Cookies.TID) String tid){
 
         if( request.getDeviceID() == null
                 || request.getOtp() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
@@ -152,6 +152,30 @@ public class VerificationManager {
         mobileEntity.setSubmitAttempts(mobileEntity.getSubmitAttempts() + 1);
         verificationRepository.save(mobileEntity);
         return new VerificationResponse(StatCodes.BLOCKED);
+    }
+
+    @PostMapping("/logout")
+    public VerificationResponse logout(HttpServletResponse servletResponse,
+                                           @CookieValue(name = Cookies.SID) String sid){
+        AuthorityEntity authorityEntity = authorizedRepository.findBySessionID(sid);
+
+        if (authorityEntity == null) {
+            System.out.println();
+            return new VerificationResponse(StatCodes.TECHNICAL);
+        }
+
+        try {
+            authorizedRepository.delete(authorityEntity);
+            Cookie sidCookie = new Cookie(Cookies.SID, null);
+            sidCookie.setPath("/");
+            sidCookie.setMaxAge(0);
+            servletResponse.addCookie(sidCookie);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new VerificationResponse(StatCodes.TECHNICAL);
+        }
+
+        return new VerificationResponse(StatCodes.SUCCESS);
     }
 
 

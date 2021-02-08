@@ -9,10 +9,7 @@ import lk.lemono.dao.repository.AuthorizedRepository;
 import lk.lemono.dao.repository.VerificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
@@ -38,44 +35,46 @@ public class VerificationManager {
 
         if(request.getMobile() == null || request.getDeviceID() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
 
-        MobileEntity entity = verificationRepository.findByNumber(request.getMobile());
+        MobileEntity mobileEntity = verificationRepository.findByNumber(request.getMobile());
 
-        if(entity == null) {
-            entity = new MobileEntity();
-            entity.setNumber(request.getMobile());
-            entity.setEnterAttempts(1);
-            entity.setResendAttempts(1);
-            entity.setSubmitAttempts(0);
-            entity.setDeviceID(request.getDeviceID());
-            entity.setSessionID(randomKey(Config.RANDOM_KEY_SIZE));
-            entity.setOtp(randomOTP(Config.RANDOM_OTP_SIZE));
+        if(mobileEntity == null) {
+            mobileEntity = new MobileEntity();
+            mobileEntity.setNumber(request.getMobile());
+            mobileEntity.setEnterAttempts(1);
+            mobileEntity.setResendAttempts(1);
+            mobileEntity.setSubmitAttempts(0);
+            mobileEntity.setDeviceID(request.getDeviceID());
+            mobileEntity.setSessionID(randomKey(Config.RANDOM_KEY_SIZE));
+            mobileEntity.setOtp(randomOTP(Config.RANDOM_OTP_SIZE));
         } else {
 
             // overwrite the previous device ID
-            if(!entity.getDeviceID().equals(request.getDeviceID())) {
-                entity.setDeviceID(request.getDeviceID());
-                entity.setSessionID(randomKey(Config.RANDOM_KEY_SIZE));
-                entity.setOtp(randomOTP(Config.RANDOM_OTP_SIZE));
-                entity.setEnterAttempts(0); // set to zero - below code will adjust
+            if(!mobileEntity.getDeviceID().equals(request.getDeviceID())) {
+                mobileEntity.setDeviceID(request.getDeviceID());
+                mobileEntity.setSessionID(randomKey(Config.RANDOM_KEY_SIZE));
+                mobileEntity.setOtp(randomOTP(Config.RANDOM_OTP_SIZE));
+                mobileEntity.setEnterAttempts(0); // set to zero - below code will adjust
             }
 
             // block the mobile number
-            if(entity.getEnterAttempts() == StatCodes.ATTEMPTS) { return new VerificationResponse(StatCodes.BLOCKED);}
-            entity.setEnterAttempts(entity.getEnterAttempts() + 1);
+            if(mobileEntity.getEnterAttempts() == StatCodes.ATTEMPTS) { return new VerificationResponse(StatCodes.BLOCKED);}
+            mobileEntity.setEnterAttempts(mobileEntity.getEnterAttempts() + 1);
         }
 
         try {
-            verificationRepository.save(entity);
+            verificationRepository.save(mobileEntity);
             // below send verification code to kafka
         }catch (Exception e){
             e.printStackTrace();
             return new VerificationResponse(StatCodes.TECHNICAL);
         }
 
+        Cookie tidCookie = new Cookie(Cookies.TID, mobileEntity.getSessionID());
+        tidCookie.setMaxAge(24 * 3600);
+        servletResponse.addCookie(tidCookie);
+
         VerificationResponse response = new VerificationResponse();
         response.setProcessed(StatCodes.SUCCESS);
-        response.setSessionID(entity.getSessionID());
-        servletResponse.addCookie(new Cookie("tid", entity.getSessionID()));
         return response;
     }
 
@@ -83,10 +82,11 @@ public class VerificationManager {
 
 
     @PostMapping("/resend")
-    public VerificationResponse resendCode(@RequestBody VerificationRequest request){
-        if(request.getSessionID() == null || request.getDeviceID() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
+    public VerificationResponse resendCode(@RequestBody VerificationRequest request,
+                                           @CookieValue(name = "tid") String tid){
+        if(request.getDeviceID() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
 
-        MobileEntity mobileEntity = verificationRepository.findByDeviceIDAndSessionID(request.getDeviceID(), request.getSessionID());
+        MobileEntity mobileEntity = verificationRepository.findByDeviceIDAndSessionID(request.getDeviceID(), tid);
         if (mobileEntity == null) {
             return new VerificationResponse(StatCodes.BLOCKED);
         }
@@ -102,50 +102,55 @@ public class VerificationManager {
         }
         VerificationResponse response = new VerificationResponse();
         response.setProcessed(StatCodes.SUCCESS);
-        response.setSessionID(mobileEntity.getSessionID());
         return response;
     }
 
 
     @PostMapping("/submit")
     public VerificationResponse submitCode(@RequestBody VerificationRequest request,
-                                           HttpServletResponse servletResponse){
+                                           HttpServletResponse servletResponse,
+                                           @CookieValue(name = "tid") String tid){
 
-        if(request.getSessionID() == null
-                || request.getDeviceID() == null
+        if( request.getDeviceID() == null
                 || request.getOtp() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
 
-        MobileEntity entity = verificationRepository.findByDeviceIDAndSessionID(request.getDeviceID(), request.getSessionID());
-        if (entity == null) {
+        MobileEntity mobileEntity = verificationRepository.findByDeviceIDAndSessionID(request.getDeviceID(), tid);
+        if (mobileEntity == null) {
             return new VerificationResponse(StatCodes.BLOCKED);
         }
 
-        // happy story
-        if(request.getOtp().trim().equals(entity.getOtp().trim())) {
+        // happy path
+        if(request.getOtp().trim().equals(mobileEntity.getOtp().trim())) {
             AuthorityEntity authEntity = new AuthorityEntity();
-            authEntity.setNumber(entity.getNumber());
+            authEntity.setNumber(mobileEntity.getNumber());
             authEntity.setSessionID(randomKey(Config.SESSION_KEY_SIZE));
 
             try {
                 authorizedRepository.save(authEntity);
-                verificationRepository.delete(entity);
+                verificationRepository.delete(mobileEntity);
             } catch (Exception e) {
                 e.printStackTrace();
                 return new VerificationResponse(StatCodes.TECHNICAL);
             }
 
             // actually we need to log the login in separate table, also include date
+            Cookie sidCookie = new Cookie(Cookies.SID, authEntity.getSessionID());
+            sidCookie.setPath("/");
+            sidCookie.setMaxAge(365 * 24 * 3600);
+            servletResponse.addCookie(sidCookie);
+
+            Cookie tidCookie = new Cookie(Cookies.TID, null);
+            tidCookie.setMaxAge(0);
+            servletResponse.addCookie(tidCookie);
+
             VerificationResponse response = new VerificationResponse();
-            response.setSessionID(authEntity.getSessionID());
-            servletResponse.addCookie(new Cookie("sid", authEntity.getSessionID()));
             response.setProcessed(StatCodes.SUCCESS);
             return response;
         }
 
-        if(entity.getSubmitAttempts() == StatCodes.RESEND_ATTEMPTS) { return new VerificationResponse(StatCodes.BLOCKED);}
-        entity.setSubmitAttempts(entity.getSubmitAttempts() + 1);
-        verificationRepository.save(entity);
-
+        if(mobileEntity.getSubmitAttempts() == StatCodes.SUBMIT_ATTEMPTS) { return new VerificationResponse(StatCodes.BLOCKED);}
+        mobileEntity.setSubmitAttempts(mobileEntity.getSubmitAttempts() + 1);
+        verificationRepository.save(mobileEntity);
         return new VerificationResponse(StatCodes.BLOCKED);
     }
 

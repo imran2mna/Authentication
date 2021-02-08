@@ -9,7 +9,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 public class VerificationRequest {
     private String mobile;
     private String deviceID;
-    private String sessionID;
     private String otp;
 
     public String getMobile() {
@@ -28,13 +27,6 @@ public class VerificationRequest {
         this.deviceID = deviceID;
     }
 
-    public String getSessionID() {
-        return sessionID;
-    }
-
-    public void setSessionID(String sessionID) {
-        this.sessionID = sessionID;
-    }
 
     public String getOtp() {
         return otp;

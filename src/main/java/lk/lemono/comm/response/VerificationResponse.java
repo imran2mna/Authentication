@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class VerificationResponse {
     private int processed;
-    private String sessionID;
 
     public VerificationResponse() {}
 
@@ -24,11 +23,4 @@ public class VerificationResponse {
         this.processed = processed;
     }
 
-    public String getSessionID() {
-        return sessionID;
-    }
-
-    public void setSessionID(String sessionID) {
-        this.sessionID = sessionID;
-    }
 }

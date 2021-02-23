@@ -33,7 +33,15 @@ public class VerificationManager {
     public VerificationResponse mobileNumber(@RequestBody VerificationRequest request,
                                              HttpServletResponse servletResponse){
 
-        if(request.getMobile() == null || request.getDeviceID() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
+        /*
+        * known bugs
+        * ==========
+        * 1. Sometimes 'sid' might be sent on the request, we need overcome from client part
+        *
+        * */
+
+        if(request.getMobile() == null
+                || request.getDeviceID() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
 
         MobileEntity mobileEntity = verificationRepository.findByNumber(request.getMobile());
 
@@ -74,7 +82,7 @@ public class VerificationManager {
         servletResponse.addCookie(tidCookie);
 
         VerificationResponse response = new VerificationResponse();
-        response.setProcessed(StatCodes.SUCCESS);
+        response.setStatus(StatCodes.SUCCESS);
         return response;
     }
 
@@ -83,6 +91,7 @@ public class VerificationManager {
 
     @PostMapping("/resend")
     public VerificationResponse resendCode(@RequestBody VerificationRequest request,
+                                           HttpServletResponse servletResponse,
                                            @CookieValue(name = Cookies.TID) String tid){
         if(request.getDeviceID() == null) { return new VerificationResponse(StatCodes.TECHNICAL); }
 
@@ -101,7 +110,7 @@ public class VerificationManager {
             return new VerificationResponse(StatCodes.TECHNICAL);
         }
         VerificationResponse response = new VerificationResponse();
-        response.setProcessed(StatCodes.SUCCESS);
+        response.setStatus(StatCodes.SUCCESS);
         return response;
     }
 
@@ -133,18 +142,19 @@ public class VerificationManager {
                 return new VerificationResponse(StatCodes.TECHNICAL);
             }
 
-            // actually we need to log the login in separate table, also include date
+            // customer session id for communication
             Cookie sidCookie = new Cookie(Cookies.SID, authEntity.getSessionID());
             sidCookie.setPath("/");
             sidCookie.setMaxAge(365 * 24 * 3600);
             servletResponse.addCookie(sidCookie);
 
+            // invalidate verification code cookie
             Cookie tidCookie = new Cookie(Cookies.TID, null);
             tidCookie.setMaxAge(0);
             servletResponse.addCookie(tidCookie);
 
             VerificationResponse response = new VerificationResponse();
-            response.setProcessed(StatCodes.SUCCESS);
+            response.setStatus(StatCodes.SUCCESS);
             return response;
         }
 

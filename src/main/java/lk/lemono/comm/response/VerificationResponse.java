@@ -7,20 +7,20 @@ import com.fasterxml.jackson.annotation.JsonInclude;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class VerificationResponse {
-    private int processed;
+    private int status;
 
     public VerificationResponse() {}
 
-    public VerificationResponse(int processed) {
-        this.processed = processed;
+    public VerificationResponse(int status) {
+        this.status = status;
     }
 
-    public int getProcessed() {
-        return processed;
+    public int getStatus() {
+        return status;
     }
 
-    public void setProcessed(int processed) {
-        this.processed = processed;
+    public void setStatus(int status) {
+        this.status = status;
     }
 
 }

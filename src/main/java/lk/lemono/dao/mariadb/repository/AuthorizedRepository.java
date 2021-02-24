@@ -1,7 +1,7 @@
-package lk.lemono.dao.repository;
+package lk.lemono.dao.mariadb.repository;
 
 
-import lk.lemono.dao.entity.AuthorityEntity;
+import lk.lemono.dao.mariadb.entity.AuthorityEntity;
 import org.springframework.data.repository.CrudRepository;
 
 /**

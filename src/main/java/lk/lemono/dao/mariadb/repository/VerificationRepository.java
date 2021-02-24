@@ -1,6 +1,6 @@
-package lk.lemono.dao.repository;
+package lk.lemono.dao.mariadb.repository;
 
-import lk.lemono.dao.entity.MobileEntity;
+import lk.lemono.dao.mariadb.entity.MobileEntity;
 import org.springframework.data.repository.CrudRepository;
 
 /**

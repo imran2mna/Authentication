@@ -1,4 +1,4 @@
-package lk.lemono.dao.entity;
+package lk.lemono.dao.mariadb.entity;
 
 import javax.persistence.*;
 import javax.validation.constraints.NotBlank;

@@ -5,8 +5,8 @@ package lk.lemono.main;
  */
 public class Config {
     //JPA
-    protected static final String REPOSITORY_PATH = "lk.lemono.dao.repository";
-    protected static final String ENTITY_PATH = "lk.lemono.dao.entity";
+    protected static final String REPOSITORY_PATH = "lk.lemono.dao.mariadb.repository";
+    protected static final String ENTITY_PATH = "lk.lemono.dao.mariadb.entity";
 
     // Key size
     public static final int RANDOM_KEY_SIZE = 20;
